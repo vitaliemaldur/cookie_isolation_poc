@@ -1,0 +1,31 @@
+{
+  "manifest_version": 2,
+  "version": "0.0.1",
+  "author": "Vitalie Maldur",
+  "name": "Cookie isolation POC",
+
+  "background": {
+    "persistent": true,
+    "scripts": [
+      "browser-polyfill.js",
+      "background.js"
+    ]
+  },
+
+  "permissions": [
+    "<all_urls>",
+    "tabs",
+    "cookies",
+    "webRequest",
+    "webRequestBlocking"
+  ],
+
+  "content_scripts": [
+    {
+      "matches": ["http://*/*", "https://*/*"],
+      "js": ["browser-polyfill.js", "content-script.js"],
+      "run_at": "document_start",
+      "all_frames": true
+    }
+  ]
+}
