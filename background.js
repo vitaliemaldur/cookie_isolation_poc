@@ -1,9 +1,14 @@
 const TABS = new Map();
 
+function getDomainName(hostname) {
+    //TODO: replace this function with tldjs
+    return hostname.substring(hostname.lastIndexOf(".", hostname.lastIndexOf(".") - 1) + 1);
+}
+
 browser.webRequest.onBeforeRequest.addListener((details) => {
     const {type, url, tabId} = details;
     if (type === 'main_frame') {
-        TABS[tabId] = new URL(url).host;
+        TABS[tabId] = getDomainName(new URL(url).host);
     }
 }, {urls: ['<all_urls>']});
 

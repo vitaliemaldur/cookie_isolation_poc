@@ -29,8 +29,13 @@ function insertCode(host) {
     (document.head || document.documentElement).appendChild(s);
 }
 
+function getDomainName(hostname) {
+    //TODO: replace this function with tldjs
+    return hostname.substring(hostname.lastIndexOf(".", hostname.lastIndexOf(".") - 1) + 1);
+}
+
 try {
-    insertCode(window.top.location.host);
+    insertCode(getDomainName(window.top.location.host));
 } catch (e) {
     browser.runtime.sendMessage('host').then((host) => {
         insertCode(host);
