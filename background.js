@@ -7,10 +7,18 @@ function getDomainName(hostname) {
 
 browser.webRequest.onBeforeRequest.addListener((details) => {
     const {type, url, tabId} = details;
+
+    const parsedURL = new URL(url);
     if (type === 'main_frame') {
-        TABS[tabId] = getDomainName(new URL(url).host);
+        TABS[tabId] = getDomainName(parsedURL.host);
+        return {};
     }
-}, {urls: ['<all_urls>']});
+
+    parsedURL.searchParams.append('cookie_isolation_poc_domain', TABS[tabId]);
+    return {
+        redirectUrl: parsedURL.toString(),
+    };
+}, {urls: ['<all_urls>'], types: ['main_frame', 'sub_frame']}, ["blocking"]);
 
 
 browser.webRequest.onBeforeSendHeaders.addListener(
@@ -41,9 +49,8 @@ browser.webRequest.onHeadersReceived.addListener(
 
         for (let i = 0; i < responseHeaders.length; i++) {
             if (responseHeaders[i].name.toLowerCase() === 'set-cookie') {
-                const cookieName = responseHeaders[i].value.trim().split('=')[0];
-                const re = new RegExp(cookieName, 'g');
-                responseHeaders[i].value = responseHeaders[i].value.replace(re, `${host}_${cookieName}`)
+                const cookieName = responseHeaders[i].value.split('=')[0].trim();
+                responseHeaders[i].value = responseHeaders[i].value.replace(cookieName, `${host}_${cookieName}`)
             }
         }
 

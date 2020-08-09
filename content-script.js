@@ -9,12 +9,11 @@ function overwrites(host) {
             const filteredCookies = cookieList.filter((cookie) => {
                 return cookie.trim().startsWith(host);
             });
-            return filteredCookies.join(';').replace(re, '');
+            return filteredCookies.join(';').replace(re, '').trim();
         },
         set(cookieString) {
-            const cookieName = cookieString.trim().split('=')[0];
-            const re = new RegExp(cookieName, 'g');
-            const value = cookieString.replace(re, `${host}_${cookieName}`)
+            const cookieName = cookieString.split('=')[0].trim();
+            const value = cookieString.replace(cookieName, `${host}_${cookieName}`)
             __coookieDesc.set.call(document, value);
         },
         enumerable: true,
@@ -37,7 +36,7 @@ function getDomainName(hostname) {
 try {
     insertCode(getDomainName(window.top.location.host));
 } catch (e) {
-    browser.runtime.sendMessage('host').then((host) => {
-        insertCode(host);
-    });
+    const parsedURL = new URL(window.location.href);
+    const host = parsedURL.searchParams.get('cookie_isolation_poc_domain');
+    insertCode(host);
 }
