@@ -20,7 +20,10 @@ browser.webRequest.onBeforeRequest.addListener((details) => {
     };
 }, {urls: ['<all_urls>'], types: ['main_frame', 'sub_frame']}, ["blocking"]);
 
-
+const onBeforeSendHeadersOptions = ['blocking', 'requestHeaders'];
+if (browser.webRequest.OnBeforeSendHeadersOptions.EXTRA_HEADERS) {
+    onBeforeSendHeadersOptions.push(browser.webRequest.OnBeforeSendHeadersOptions.EXTRA_HEADERS);
+}
 browser.webRequest.onBeforeSendHeaders.addListener(
     (details) => {
         const {tabId, requestHeaders} = details;
@@ -38,10 +41,14 @@ browser.webRequest.onBeforeSendHeaders.addListener(
         return {requestHeaders: requestHeaders};
     },
     {urls: ['<all_urls>']},
-    ["blocking", "requestHeaders", browser.webRequest.OnBeforeSendHeadersOptions.EXTRA_HEADERS]
+    onBeforeSendHeadersOptions
 );
 
 
+const onHeadersReceivedOptions = ['blocking', 'responseHeaders'];
+if (browser.webRequest.OnHeadersReceivedOptions.EXTRA_HEADERS) {
+    onHeadersReceivedOptions.push(browser.webRequest.OnHeadersReceivedOptions.EXTRA_HEADERS);
+}
 browser.webRequest.onHeadersReceived.addListener(
     (details) => {
         const {tabId, responseHeaders} = details;
@@ -49,15 +56,18 @@ browser.webRequest.onHeadersReceived.addListener(
 
         for (let i = 0; i < responseHeaders.length; i++) {
             if (responseHeaders[i].name.toLowerCase() === 'set-cookie') {
-                const cookieName = responseHeaders[i].value.split('=')[0].trim();
-                responseHeaders[i].value = responseHeaders[i].value.replace(cookieName, `${host}_${cookieName}`)
+                // Firefox BUG: If server sends 2 Set-Cookie headers their values are combined here with \n as delimiter
+                responseHeaders[i].value = responseHeaders[i].value.split('\n').map((v) => {
+                    const cookieName = v.split('=')[0].trim();
+                    return v.replace(cookieName, `${host}_${cookieName}`);
+                }).join('\n');
             }
         }
 
         return {responseHeaders: responseHeaders};
     },
     {urls: ['<all_urls>']},
-    ['blocking', 'responseHeaders', browser.webRequest.OnHeadersReceivedOptions.EXTRA_HEADERS]
+    onHeadersReceivedOptions
 );
 
 browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
