@@ -1,10 +1,10 @@
 
 function overwrites(host) {
-    const __coookieDesc = Object.getOwnPropertyDescriptor(Document.prototype, 'cookie')
+    const __coookieDesc = Object.getOwnPropertyDescriptor(Document.prototype, 'cookie');
 
     Object.defineProperty(document, 'cookie', {
         get() {
-            const re = new RegExp(`${host}_`, 'g');
+            const re = new RegExp(`${host}##`, 'g');
             const cookieList = __coookieDesc.get.call(document).split(';');
             const filteredCookies = cookieList.filter((cookie) => {
                 return cookie.trim().startsWith(host);
@@ -13,7 +13,7 @@ function overwrites(host) {
         },
         set(cookieString) {
             const cookieName = cookieString.split('=')[0].trim();
-            const value = cookieString.replace(cookieName, `${host}_${cookieName}`)
+            const value = cookieString.replace(cookieName, `${host}##${cookieName}`)
             __coookieDesc.set.call(document, value);
         },
         enumerable: true,
@@ -33,10 +33,17 @@ function getDomainName(hostname) {
     return hostname.substring(hostname.lastIndexOf(".", hostname.lastIndexOf(".") - 1) + 1);
 }
 
+let tabDomain = null;
 try {
-    insertCode(getDomainName(window.top.location.host));
+    tabDomain = getDomainName(window.top.location.host);
 } catch (e) {
     const parsedURL = new URL(window.location.href);
-    const host = parsedURL.searchParams.get('cookie_isolation_poc_domain');
-    insertCode(host);
+    tabDomain = parsedURL.searchParams.get('cookie_isolation_poc_domain');
+}
+
+if (tabDomain) {
+    const currentWindowDomain = getDomainName(window.location.hostname);
+    if (tabDomain !== currentWindowDomain) {
+        insertCode(tabDomain);
+    }
 }

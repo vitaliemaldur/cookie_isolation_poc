@@ -5,6 +5,11 @@ function getDomainName(hostname) {
     return hostname.substring(hostname.lastIndexOf(".", hostname.lastIndexOf(".") - 1) + 1);
 }
 
+function isThirdPartyRequest(tabId, url) {
+    const parsedURL = new URL(url);
+    return TABS[tabId] !== getDomainName(parsedURL.host);
+}
+
 browser.webRequest.onBeforeRequest.addListener((details) => {
     const {type, url, tabId} = details;
 
@@ -26,9 +31,12 @@ if (browser.webRequest.OnBeforeSendHeadersOptions.EXTRA_HEADERS) {
 }
 browser.webRequest.onBeforeSendHeaders.addListener(
     (details) => {
-        const {tabId, requestHeaders} = details;
-        const re = new RegExp(`${TABS[tabId]}_`, 'g');
+        const {tabId, requestHeaders, url} = details;
+        if (!isThirdPartyRequest(tabId, url)) {
+            return {};
+        }
 
+        const re = new RegExp(`${TABS[tabId]}##`, 'g');
         for (let i = 0; i < requestHeaders.length; i++) {
             if (requestHeaders[i].name.toLowerCase() === 'cookie') {
                 const cookies = requestHeaders[i].value.split(';').filter((cookie) => {
@@ -51,15 +59,17 @@ if (browser.webRequest.OnHeadersReceivedOptions.EXTRA_HEADERS) {
 }
 browser.webRequest.onHeadersReceived.addListener(
     (details) => {
-        const {tabId, responseHeaders} = details;
-        const host = TABS[tabId];
+        const {tabId, responseHeaders, url} = details;
+        if (!isThirdPartyRequest(tabId, url)) {
+            return {};
+        }
 
         for (let i = 0; i < responseHeaders.length; i++) {
             if (responseHeaders[i].name.toLowerCase() === 'set-cookie') {
                 // Firefox BUG: If server sends 2 Set-Cookie headers their values are combined here with \n as delimiter
                 responseHeaders[i].value = responseHeaders[i].value.split('\n').map((v) => {
                     const cookieName = v.split('=')[0].trim();
-                    return v.replace(cookieName, `${host}_${cookieName}`);
+                    return v.replace(cookieName, `${TABS[tabId]}##${cookieName}`);
                 }).join('\n');
             }
         }
@@ -69,7 +79,3 @@ browser.webRequest.onHeadersReceived.addListener(
     {urls: ['<all_urls>']},
     onHeadersReceivedOptions
 );
-
-browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    sendResponse(TABS[sender.tab.id]);
-});
